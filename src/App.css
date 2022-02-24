@@ -1,0 +1,82 @@
+.leaflet-container{
+  /* border:2px solid black; */
+  width:780px;
+  height: 600px;
+  z-index: 0;;
+}
+.checkBoxes{
+  /* border:2px solid black; */
+  margin:0 auto;
+  width:fit-content;
+  margin-top:30px;
+}
+
+.App .main{
+  /* border:2px solid black; */
+  display:flex;
+  justify-content: space-between;
+  padding-top: 30px;
+}
+
+.App .results{
+  width: 300px;
+  /* border:2px solid black; */
+  height:600px;
+  /* overflow-y: scroll; */
+}
+.App .map{
+  border:2px solid black;
+}
+.App .temp{
+  width: 300px;
+}
+
+.searchBox{
+  /* border:2px solid black; */
+  height:50px;
+  margin-left:10px;
+  margin-right:10px;
+  width:fit-content;
+  margin-top:20px;
+  display:flex;
+
+}
+.searchBox .cityInput-container{
+  /* border:2px solid black; */
+  width: 200px;
+  font-size:1.2rem;
+  position:relative;
+  z-index: 999;
+  border:2px solid black;
+  border-radius:0px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.searchBox .cityInput__control{
+  border:2px solid black;
+  height:40px;
+  border-radius:0px;
+}
+.searchBox .cityInput__indicators{
+  display:none;
+}
+.searchBox .searchBtn{
+  height:100%;
+  background:none;
+  border:2px solid black;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size:1.2rem;
+  margin-left: 3px;;
+}
+.searchBox .searchBtn:hover{
+  background-color:rgb(211, 208, 208);
+  cursor: pointer;
+}
+.App .divSearchBox{
+  margin-right: auto;
+  margin-left: auto;
+  width:fit-content;
+  display: flex;
+  /* align-items: center; */
+
+}
