@@ -24,14 +24,19 @@ function App({ loading, setLoading }) {
   const [bordersActive, setBordersActive] = useState(false);
   const [citiesActive, setCitiesActive] = useState(false);
   const [airportsActive, setAirportsActive] = useState(false);
+
   // const [json, setJson] = useState(null);
-  const [cityName, setCityName] = useState("");
-  const [CTcityName, setCTCityName] = useState("");
+  // const [cityName, setCityName] = useState("");
   // const [autoCompleteData, setAutoCompleteData] = useState([]);
-  const [options, setOptions] = useState();
-  const [CToptions, setCTOptions] = useState();
+  // const [options, setOptions] = useState();
+
   const [searchMarker, setSearchMarker] = useState(null);
-  const [generalTempData, setGeneralTempData] = useState();
+  const [startGeneralTempData, setStartGeneralTempData] = useState();
+  const [endGeneralTempData, setEndGeneralTempData] = useState();
+  const [startPoint, setStartPoint] = useState();
+  const [startOptions, setStartOptions] = useState();
+  const [endPoint, setEndPoint] = useState();
+  const [endOptions, setEndOptions] = useState();
 
   const airports = airportsData.filter((airport) => {
     if (data.cities.find((city) => airport.city === city.city)) {
@@ -41,45 +46,24 @@ function App({ loading, setLoading }) {
     }
   });
 
-  const findCities = async (cityName) => {
-    if (cityName.length > 0) {
-      var tempData = generalTempData.filter((name) => name.properties.display_name === cityName)
-      // console.log(tempData[0])
+  const findCities = async (city, point) => {
+    var tempData
+    if (city.length > 0) {
+      if (point === "start") {
+        tempData = startGeneralTempData.filter((name) => name.properties.display_name === city)
+      }
+
+      if(point === "end") {
+        tempData = endGeneralTempData.filter((name) => name.properties.display_name === city)
+      }
+
+
       resultClick(tempData[0])
-
-      // const url = `https://nominatim.openstreetmap.org/search?city=${cityName}&format=geojson`;
-      // await fetch(url)
-      //   .then((response) => response.json())
-      //   .then((data) => {
-      //     // setJson(data.features[0]);
-      //     console.log("data.featues.properties", data.features.properties);
-      //     // resultClick(data.features[0])
-      //   })
     }
 
   };
 
-  const findCTCities = async (cityName) => {
-    var DataCheapTrip = data.cities;
-    if (cityName.length > 0) {
-      DataCheapTrip = DataCheapTrip.filter((city) => city.city == cityName)
-    }
-    setSearchMarker({
-      coordinates: {
-        lat: DataCheapTrip[0].lat,
-        lng: DataCheapTrip[0].lon
-      },
-      name: DataCheapTrip[0].city
-    });
-    if (map) {
-      map.flyTo({
-        lat: DataCheapTrip[0].lat,
-        lng: DataCheapTrip[0].lon,
-      })
-    }
-  };
-
-  const findAutocomplete = async (cityName) => {
+  const findAutocomplete = async (cityName, point) => {
     const url2 = `https://photon.komoot.io/api/?q=${cityName}&osm_tag=place:city`;
     const url = `https://nominatim.openstreetmap.org/search?city=${cityName}&format=geojson`
     const response = await fetch(url);
@@ -88,10 +72,39 @@ function App({ loading, setLoading }) {
     let data1 = (await response2.json()).features;
     var dataArray = [];
     var duplicated = false;
+    var CTdata = data.cities
+
+    CTdata = CTdata.filter((name) => name.city.toLowerCase().includes(cityName.toLowerCase()))
+
+    CTdata.forEach((result) => {
+      duplicated = false;
+
+      var tempJson = {
+        geometry: {
+          coordinates: [result.lon, result.lat],
+        },
+        properties: {
+          display_name: result.city,
+          source: 'CheapTrip'
+        }
+      }
+
+      for (var i = 0; i < dataArray.length; i++) {
+        if ((tempJson.geometry.coordinates[0] === dataArray[i].geometry.coordinates[0]
+          && tempJson.geometry.coordinates[1] === dataArray[i].geometry.coordinates[1])
+          || (tempJson.properties.display_name === dataArray[i].properties.display_name)) {
+          duplicated = true;
+        }
+      }
+      if (!duplicated) {
+        dataArray.push(tempJson);
+      }
+    })
+
 
     data1.forEach((result) => {
       duplicated = false;
-      // console.log(result)
+
       var tempJson = {
         type: result.type,
         geometry: {
@@ -106,10 +119,10 @@ function App({ loading, setLoading }) {
         }
       }
       for (var i = 0; i < dataArray.length; i++) {
-        // console.log(tempJson.geometry.coordinates[0],dataArray[i].geometry.coordinates[0], tempJson.geometry.coordinates[1], dataArray[i].geometry.coordinates[1],tempJson.properties.display_name,dataArray[i].properties.display_name)
-        if ((tempJson.geometry.coordinates[0] === dataArray[i].geometry.coordinates[0] 
+
+        if ((tempJson.geometry.coordinates[0] === dataArray[i].geometry.coordinates[0]
           && tempJson.geometry.coordinates[1] === dataArray[i].geometry.coordinates[1])
-          ||(tempJson.properties.display_name===dataArray[i].properties.display_name)) {
+          || (tempJson.properties.display_name === dataArray[i].properties.display_name)) {
           duplicated = true;
         }
       }
@@ -120,9 +133,9 @@ function App({ loading, setLoading }) {
     data2.forEach((result) => {
       duplicated = false;
       if (result.properties.osm_type === "node") {
-        // console.log(result)
+
         var myArray = result.properties.display_name.split(",");
-        // console.log(myArray[0], myArray[1], myArray[myArray.length - 1])
+
         var tempJson = {
           type: result.type,
           geometry: {
@@ -137,11 +150,11 @@ function App({ loading, setLoading }) {
           }
         }
 
-        // console.log(tempJson)
+
         for (var i = 0; i < dataArray.length; i++) {
-          if ((tempJson.geometry.coordinates[0] === dataArray[i].geometry.coordinates[0] 
+          if ((tempJson.geometry.coordinates[0] === dataArray[i].geometry.coordinates[0]
             && tempJson.geometry.coordinates[1] === dataArray[i].geometry.coordinates[1])
-            ||(tempJson.properties.display_name===dataArray[i].properties.display_name)) {
+            || (tempJson.properties.display_name === dataArray[i].properties.display_name)) {
             duplicated = true;
           }
         }
@@ -149,19 +162,21 @@ function App({ loading, setLoading }) {
           dataArray.push(tempJson);
         }
       }
-      // console.log("end")
+
     })
-    // console.log(dataArray)
-    dataArray.forEach((city)=>{
-      city.properties.display_name=city.properties.display_name.replace("undefined,", "")
+
+    dataArray.forEach((city) => {
+      city.properties.display_name = city.properties.display_name.replace("undefined,", "")
     })
-    setGeneralTempData(dataArray);
+    if (point === "start")
+      setStartGeneralTempData(dataArray);
+    if (point === "end")
+      setEndGeneralTempData(dataArray);
     return dataArray;
   };
 
   const resultClick = (city) => {
-    // console.log(city)
-    // console.log("clicked");
+
     setSearchMarker({
       coordinates: {
         lat: city.geometry.coordinates[1],
@@ -177,80 +192,68 @@ function App({ loading, setLoading }) {
     }
   };
 
-  const onChangeHandler = async (text) => {
-    setCityName(text);
+  const onChangeHandler = async (text, point) => {
     let matches = [];
     if (text.length > 0) {
-      const data = await findAutocomplete(text);
-      // console.log(data);
+      const data = await findAutocomplete(text, point);
+
       matches = data.map((feature) => feature.properties.display_name)
-      // matches = matches.filter((a, b) => matches.indexOf(a) === b);
-    }
-    // console.log("matches", matches);
-    setOptions(matches);
 
-  };
-
-  const onChangeCTHandler = async (text) => {
-    setCTCityName(text);
-    var CTdata = data.cities
-    let matches = [];
-    if (text.length > 0) {
-      CTdata = CTdata.filter((name) => name.city.toLowerCase().includes(text.toLowerCase()))
-      matches = CTdata.map((feature) => feature.city);
-      matches = matches.filter((a, b) => matches.indexOf(a) === b);
     }
-    // console.log("matches", matches);
-    setCTOptions(matches);
-  };
+    return matches;
+    // setOptions(matches);
+  }
+
+  const onChangeHandlerStart = async (text) => {
+    setStartPoint(text);
+    setStartOptions(await onChangeHandler(text, "start"));
+  }
+  const onChangeHandlerEnd = async (text) => {
+    setEndPoint(text);
+    setEndOptions(await onChangeHandler(text, "end"));
+  }
 
   return (
     <div className="App">
       <div className="divSearchBox">
         <div className="searchBox">
           <AutoComplete
-            onChange={(e) => { onChangeHandler(e.target.value) }}
-            placeholder="Search cities from OSM"
-            value={cityName}
-            setValue={setCityName}
-            options={options}
-            setOptions={setOptions}
+            onChange={(e) => { onChangeHandlerStart(e.target.value) }}
+            placeholder="Search cities"
+            value={startPoint}
+            setValue={setStartPoint}
+            options={startOptions}
+            setOptions={setStartOptions}
           />
-          {options &&
-            options.map((option, i) => {
+          {startOptions &&
+            startOptions.map((option, i) => {
               <div key={i}>option</div>;
             })}
-          <input type="button" className="searchBtn" onClick={() => { findCities(cityName) }} value="Search" />
+          <input type="button" className="searchBtn" onClick={() => { findCities(startPoint, "start") }} value="Search" />
 
         </div>
+
         <div className="searchBox">
           <AutoComplete
-            onChange={(e) => { onChangeCTHandler(e.target.value) }}
-            placeholder="Search cities from Cheaptrip"
-            value={CTcityName}
-            setValue={setCTCityName}
-            options={CToptions}
-            setOptions={setCTOptions}
+            onChange={(e) => { onChangeHandlerEnd(e.target.value) }}
+            placeholder="Search cities"
+            value={endPoint}
+            setValue={setEndPoint}
+            options={endOptions}
+            setOptions={setEndOptions}
           />
-          {options &&
-            options.map((option, i) => {
+          {endOptions &&
+            endOptions.map((option, i) => {
               <div key={i}>option</div>;
             })}
-          <input type="button" className="searchBtn" onClick={() => { findCTCities(CTcityName) }} value="Search" />
+          <input type="button" className="searchBtn" onClick={() => { findCities(endPoint, "end") }} value="Search" />
 
         </div>
+
       </div>
       <div className="main">
-        <div className="results">
-          {/* {json &&
-            json.map((city) => (
-              <SearchResult
-                key={city.properties.display_name}
-                city={city}
-                resultClick={resultClick}
-              />
-            ))} */}
-        </div>
+        <div className="results"></div>
+
         <div className="map">
           <MapContainer
             center={{ lat: 51.505, lng: -0.09 }}
