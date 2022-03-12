@@ -4,8 +4,6 @@ import {
   TileLayer,
   Marker,
   Popup,
-  // GeoJSON,
-  // useMapEvent,
   Rectangle
 } from "react-leaflet";
 
@@ -15,9 +13,8 @@ import data from "./data.json";
 import airportsData from "./airports.json";
 import * as Actions from "./redux/AppStateReducer/ActionCreators";
 import airportIcon from "./assets/airport";
-// import L, { rectangle } from "leaflet";
-// import SearchResult from "./components/SearchResult/SearchResult";
 import AutoComplete from "./components/AutoComplete/AutoComplete";
+
 
 function App({ loading, setLoading }) {
   const [map, setMap] = useState(null);
@@ -25,45 +22,40 @@ function App({ loading, setLoading }) {
   const [citiesActive, setCitiesActive] = useState(false);
   const [airportsActive, setAirportsActive] = useState(false);
 
-  // const [json, setJson] = useState(null);
-  // const [cityName, setCityName] = useState("");
-  // const [autoCompleteData, setAutoCompleteData] = useState([]);
-  // const [options, setOptions] = useState();
-
   const [searchMarker, setSearchMarker] = useState(null);
-  const [startGeneralTempData, setStartGeneralTempData] = useState();
   const [endGeneralTempData, setEndGeneralTempData] = useState();
-  const [startPoint, setStartPoint] = useState();
-  const [startOptions, setStartOptions] = useState();
   const [endPoint, setEndPoint] = useState();
   const [endOptions, setEndOptions] = useState();
 
+  const getDistance = (firstPoint, secondPoint) => {
+    let y = secondPoint.lon - firstPoint.geometry.coordinates[0];
+    let x = secondPoint.lat - firstPoint.geometry.coordinates[1];
+
+    return Math.sqrt(x * x + y * y);
+  }
+
+  const cities = data.cities;
+
   const airports = airportsData.filter((airport) => {
-    if (data.cities.find((city) => airport.city === city.city)) {
+    if (cities.find((city) => airport.city === city.city)) {
       return true;
     } else {
       return false;
     }
   });
 
-  const findCities = async (city, point) => {
-    var tempData
-    if (city.length > 0) {
-      if (point === "start") {
-        tempData = startGeneralTempData.filter((name) => name.properties.display_name === city)
-      }
+  const findCities = async () => {
+    var tempData2;
+    if (endPoint !== undefined) {
+      tempData2 = endGeneralTempData.filter((name) => name.properties.display_name === endPoint)
 
-      if(point === "end") {
-        tempData = endGeneralTempData.filter((name) => name.properties.display_name === city)
-      }
-
-
-      resultClick(tempData[0])
+      resultClick(tempData2[0])
     }
+    else { alert("Please enter a city name") }
 
   };
 
-  const findAutocomplete = async (cityName, point) => {
+  const findAutocomplete = async (cityName) => {
     const url2 = `https://photon.komoot.io/api/?q=${cityName}&osm_tag=place:city`;
     const url = `https://nominatim.openstreetmap.org/search?city=${cityName}&format=geojson`
     const response = await fetch(url);
@@ -72,7 +64,18 @@ function App({ loading, setLoading }) {
     let data1 = (await response2.json()).features;
     var dataArray = [];
     var duplicated = false;
-    var CTdata = data.cities
+    var CTdata = cities
+
+    if (cityName.length === 0) {
+      return [{
+        geometry: {
+          coordinates: [0, 0],
+        },
+        properties: {
+          display_name: '',
+        }
+      }];
+    }
 
     CTdata = CTdata.filter((name) => name.city.toLowerCase().includes(cityName.toLowerCase()))
 
@@ -106,10 +109,8 @@ function App({ loading, setLoading }) {
       duplicated = false;
 
       var tempJson = {
-        type: result.type,
         geometry: {
           coordinates: result.geometry.coordinates,
-          type: result.geometry.type
         },
         properties: {
           display_name: `${result.properties.name}, ${result.properties.county}, ${result.properties.country}`,
@@ -137,10 +138,8 @@ function App({ loading, setLoading }) {
         var myArray = result.properties.display_name.split(",");
 
         var tempJson = {
-          type: result.type,
           geometry: {
             coordinates: result.geometry.coordinates,
-            type: result.geometry.type
           },
           properties: {
             display_name: `${myArray[0]}, ${myArray[1]}, ${myArray[myArray.length - 1]}`,
@@ -168,68 +167,79 @@ function App({ loading, setLoading }) {
     dataArray.forEach((city) => {
       city.properties.display_name = city.properties.display_name.replace("undefined,", "")
     })
-    if (point === "start")
-      setStartGeneralTempData(dataArray);
-    if (point === "end")
-      setEndGeneralTempData(dataArray);
-    return dataArray;
+
+    var sortedArray = dataArray.filter((a) => { if (a.properties.display_name.toLowerCase().startsWith(cityName)) { return a } })
+    var notSortedArray = dataArray.filter((a) => { if (!a.properties.display_name.toLowerCase().startsWith(cityName)) { return a } })
+
+
+    sortedArray = sortedArray.concat(notSortedArray);
+    if (sortedArray.length === 0) {
+      return [{
+        geometry: {
+          coordinates: [0, 0],
+        },
+        properties: {
+          display_name: 'does not exist in database',
+        }
+      }];
+    }
+
+    setEndGeneralTempData(sortedArray);
+    return sortedArray;
+
   };
 
-  const resultClick = (city) => {
+  const resultClick = (endCity) => {
+    var cheapTripDataFile = data.cities;
+    var closestCity = cheapTripDataFile[0]
+
+    cheapTripDataFile.forEach((point) => {
+      if (getDistance(endCity, point) <= getDistance(endCity, closestCity)) {
+        closestCity = point
+      }
+    })
+    console.log("Closest city from CheapTrip: " ,closestCity)
 
     setSearchMarker({
       coordinates: {
-        lat: city.geometry.coordinates[1],
-        lng: city.geometry.coordinates[0],
+        lat: endCity.geometry.coordinates[1],
+        lng: endCity.geometry.coordinates[0],
       },
-      name: city.properties.display_name,
+      name: endCity.properties.display_name,
     });
+
     if (map) {
       map.flyTo({
-        lat: city.geometry.coordinates[1],
-        lng: city.geometry.coordinates[0],
+        lat: endCity.geometry.coordinates[1],
+        lng: endCity.geometry.coordinates[0],
       });
     }
+
+
   };
 
   const onChangeHandler = async (text, point) => {
     let matches = [];
-    if (text.length > 0) {
-      const data = await findAutocomplete(text, point);
+    const data = await findAutocomplete(text, point);
 
-      matches = data.map((feature) => feature.properties.display_name)
-
-    }
+    matches = data.map((feature) => feature.properties.display_name)
     return matches;
-    // setOptions(matches);
+
   }
 
-  const onChangeHandlerStart = async (text) => {
-    setStartPoint(text);
-    setStartOptions(await onChangeHandler(text, "start"));
-  }
+  var delayTimer;
+
   const onChangeHandlerEnd = async (text) => {
-    setEndPoint(text);
-    setEndOptions(await onChangeHandler(text, "end"));
+    clearTimeout(delayTimer);
+    delayTimer = setTimeout(async function () {
+      setEndOptions(await onChangeHandler(text, "end"));
+    }, 500)
   }
 
   return (
     <div className="App">
       <div className="divSearchBox">
         <div className="searchBox">
-          <AutoComplete
-            onChange={(e) => { onChangeHandlerStart(e.target.value) }}
-            placeholder="Search cities"
-            value={startPoint}
-            setValue={setStartPoint}
-            options={startOptions}
-            setOptions={setStartOptions}
-          />
-          {startOptions &&
-            startOptions.map((option, i) => {
-              <div key={i}>option</div>;
-            })}
-          <input type="button" className="searchBtn" onClick={() => { findCities(startPoint, "start") }} value="Search" />
 
         </div>
 
@@ -246,7 +256,7 @@ function App({ loading, setLoading }) {
             endOptions.map((option, i) => {
               <div key={i}>option</div>;
             })}
-          <input type="button" className="searchBtn" onClick={() => { findCities(endPoint, "end") }} value="Search" />
+          <input type="button" className="searchBtn" onClick={() => { findCities() }} value="Lets go" />
 
         </div>
 
@@ -262,17 +272,16 @@ function App({ loading, setLoading }) {
             whenCreated={(map) => setMap(map)}
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            {bordersActive &&
-              data.cities.map((city) => (
-                <Rectangle bounds={[[city.latX, city.lonX], [city.latY, city.lonY]]} />
-              ))}
             {citiesActive &&
-              data.cities.map((city) => (
+              cities.map((city) => (
                 <Marker position={{ lat: city.lat, lng: city.lon }}>
                   <Popup>{city.city}</Popup>
                 </Marker>
               ))}
-
+            {bordersActive &&
+              cities.map((city) => (
+                <Rectangle bounds={[[city.latX, city.lonX], [city.latY, city.lonY]]} />
+              ))}
             {airportsActive &&
               airports.map((airport) => (
                 <Marker
